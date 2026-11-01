@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  YOUTH
+  SUPERVISOR
+  ADMIN
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  password      String         // stored hashed, never returned
+  role          Role           @default(YOUTH)
+  createdAt     DateTime       @default(now())
+  programs      Program[]      // programs they supervise
+  applications  Application[]
+  announcements Announcement[]
+}
+
+model Program {
+  id             Int            @id @default(autoincrement())
+  title          String
+  description    String
+  imageUrl       String?
+  totalSeats     Int
+  availableSeats Int
+  supervisorId   Int
+  supervisor     User           @relation(fields: [supervisorId], references: [id])
+  sessions       Session[]
+  applications   Application[]
+  materials      Material[]
+  announcements  Announcement[]
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  programId Int
+  program   Program  @relation(fields: [programId], references: [id])
+  startsAt  DateTime
+  location  String?
+  link      String?
+}
+
+model Application {
+  id        Int               @id @default(autoincrement())
+  userId    Int
+  programId Int
+  status    ApplicationStatus @default(PENDING)
+  cvUrl     String?
+  createdAt DateTime          @default(now())
+  user      User              @relation(fields: [userId], references: [id])
+  program   Program           @relation(fields: [programId], references: [id])
+
+  @@unique([userId, programId]) // no applying twice
+}
+
+model Announcement {
+  id        Int      @id @default(autoincrement())
+  title     String
+  body      String
+  authorId  Int
+  programId Int?     // null = general announcement
+  author    User     @relation(fields: [authorId], references: [id])
+  program   Program? @relation(fields: [programId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Material {
+  id        Int     @id @default(autoincrement())
+  programId Int
+  program   Program @relation(fields: [programId], references: [id])
+  title     String
+  fileUrl   String  // path only, the file is NOT in the database
+}
+
